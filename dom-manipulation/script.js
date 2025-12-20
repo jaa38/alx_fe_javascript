@@ -251,6 +251,8 @@ document.addEventListener('DOMContentLoaded', function () {
     saveQuotes();
     populateCategories();
     filterQuotes();
+
+    showNotification('Quotes synced with server!');
   }
 
   async function postQuoteToServer(quote) {
