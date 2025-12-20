@@ -2,15 +2,40 @@ document.addEventListener('DOMContentLoaded', function () {
   const quoteDisplay = document.getElementById('quoteDisplay');
   const newQuoteButton = document.getElementById('newQuote');
   const categoryFilter = document.getElementById('categoryFilter');
+  const notification = document.getElementById('notification');
+
+  let preferLocalData = false;
+
+  document.getElementById('preferLocal').addEventListener('change', (e) => {
+    preferLocalData = e.target.checked;
+  });
+
+  function showNotification(message) {
+    notification.textContent = message;
+    notification.style.display = 'block';
+
+    setTimeout(() => {
+      notification.style.display = 'none';
+    }, 4000);
+  }
 
   // Initial quotes
   const quotes = [
-    { text: 'Stay hungry, stay foolish.', category: 'Motivation' },
+    {
+      text: 'Stay hungry, stay foolish.',
+      category: 'Motivation',
+      lastUpdated: Date.now(),
+    },
     {
       text: 'Code is like humor. When you have to explain it, it’s bad.',
       category: 'Programming',
+      lastUpdated: Date.now(),
     },
-    { text: 'Simplicity is the soul of efficiency.', category: 'Design' },
+    {
+      text: 'Simplicity is the soul of efficiency.',
+      category: 'Design',
+      lastUpdated: Date.now(),
+    },
   ];
 
   // Load quotes from localStorage
@@ -67,10 +92,17 @@ document.addEventListener('DOMContentLoaded', function () {
       quotes.push({
         text: quoteText,
         category: quoteCategory,
+        lastUpdated: Date.now(),
+      });
+
+      postQuoteToServer({
+        text: quoteText,
+        category: quoteCategory,
+        lastUpdated: Date.now(),
       });
 
       saveQuotes();
-      
+
       //update category dropdown immediately
       populateCategories();
 
@@ -83,11 +115,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Populate category dropdown dynamically
   function populateCategories() {
-    const categories = [
-        ...new Set(
-            quotes.map(quote => quote.category)
-        ),
-    ];
+    const categories = [...new Set(quotes.map((quote) => quote.category))];
 
     categoryFilter.innerHTML = `
       <option value="all">All Categories</option>
@@ -168,6 +196,73 @@ document.addEventListener('DOMContentLoaded', function () {
     reader.readAsText(file);
   }
 
+  async function fetchQuotesFromServer() {
+    try {
+      const response = await fetch(
+        'https://jsonplaceholder.typicode.com/posts?_limit=5'
+      );
+
+      const data = await response.json();
+
+      // Convert server data into quote format
+      const serverQuotes = data.map((post) => ({
+        text: post.title,
+        category: 'Server',
+        serverId: post.id,
+        lastUpdated: Date.now(),
+      }));
+
+      mergeServerQuotes(serverQuotes);
+    } catch (error) {
+      console.error('Failed to fetch server data', error);
+    }
+  }
+
+  function mergeServerQuotes(serverQuotes) {
+    serverQuotes.forEach((serverQuote) => {
+      const localIndex = quotes.findIndex(
+        (q) => q.serverId === serverQuote.serverId
+      );
+
+      if (localIndex === -1) {
+        // New server quote
+        quotes.push(serverQuote);
+        showNotification('New quotes synced from server');
+      } else {
+        // Conflict detected
+        const localQuote = quotes[localIndex];
+
+        if (
+          serverQuote.lastUpdated > localQuote.lastUpdated &&
+          !preferLocalData
+        ) {
+          quotes[localIndex] = serverQuote;
+          showNotification('Server version replaced a local quote');
+        } else {
+          showNotification('Local version kept.');
+        }
+      }
+    });
+
+    saveQuotes();
+    populateCategories();
+    filterQuotes();
+  }
+
+  async function postQuoteToServer(quote) {
+    try {
+      await fetch('https://jsonplaceholder.typicode.com/posts', {
+        method: 'POST',
+        body: JSON.stringify(quote),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    } catch (error) {
+      console.error('Failed to post to server', error);
+    }
+  }
+
   // Restore saved category filter
   const savedCategory = localStorage.getItem('selectedCategory');
   if (savedCategory) {
@@ -182,6 +277,10 @@ document.addEventListener('DOMContentLoaded', function () {
   document
     .getElementById('importFile')
     .addEventListener('change', importFromJsonFile);
+
+  setInterval(() => {
+    fetchQuotesFromServer();
+  }, 15000);
 
   // Initial setup
   populateCategories();
