@@ -83,9 +83,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Populate category dropdown dynamically
   function populateCategories() {
-    const categories = new Set();
-
-    quotes.forEach((quote) => categories.add(quote.category));
+    const categories = [
+        ...new Set(
+            quotes.map(quote => quote.category)
+        ),
+    ];
 
     categoryFilter.innerHTML = `
       <option value="all">All Categories</option>
