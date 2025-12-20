@@ -196,6 +196,10 @@ document.addEventListener('DOMContentLoaded', function () {
     reader.readAsText(file);
   }
 
+  function syncQuotes() {
+    fetchQuotesFromServer();
+  }
+
   async function fetchQuotesFromServer() {
     try {
       const response = await fetch(
@@ -279,7 +283,7 @@ document.addEventListener('DOMContentLoaded', function () {
     .addEventListener('change', importFromJsonFile);
 
   setInterval(() => {
-    fetchQuotesFromServer();
+    syncQuotes();
   }, 15000);
 
   // Initial setup
